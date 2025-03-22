@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -e
+
+function usage() {
+  echo "Usage: $0 [OPTION]..." 1>&2;
+  echo "Build and run a master & node as qemu vms." 1>&2;
+  echo "" 1>&2;
+  echo "  -n    number of nodes to run (default 1)" 1>&2;
+  echo "  -m    number of masters to run (default 1)" 1>&2;
+  echo "  -c    cleanup previous disks if they exist before starting" 1>&2;
+  echo "          this indiscriminately removes all *.qcow2" 1>&2;
+  echo "          in the directory we create them via this script" 1>&2;
+  echo "  -h    display this help and exit" 1>&2;
+  exit 1;
+}
+
+function ensure_number() {
+    if ! [[ $1 =~ ^[1-9][0-9]*$ ]]; then
+        echo $2 1>&2;
+        usage 
+    fi
+}
+
+NUM_MASTERS=1
+NUM_NODES=1
+CLEAN_DISKS=false
+while getopts "n:m:ch" opt; do
+  case $opt in
+    n) 
+        ensure_number $OPTARG "number of nodes must be a positive, non-zero integer.";
+        NUM_NODES=$OPTARG;
+        ;;
+    m) 
+        ensure_number $OPTARG "number of nodes must be a positive, non-zero integer.";
+        NUM_MASTERS=$OPTARG;
+        ;;
+    c) CLEAN_DISKS=true ;;
+    h) usage ;;
+    *) usage ;;
+  esac
+done
+
+# We could track if we created the disk and cleanup at the end, but I'm lazy.
+if [ $CLEAN_DISKS = true ]; then
+    rm -f *.qcow2
+fi
+
+MASTER_VM_EXEC=$(nix build .#nixosConfigurations.master.config.formats.vm --print-out-paths --no-link)/run-master-vm
+NODE_VM_EXEC=$(nix build .#nixosConfigurations.node.config.formats.vm --print-out-paths --no-link)/run-node-vm
+
+
+# One master has to listen for the qemu socket network, the rest will also connect.
+NIX_DISK_IMAGE="./master_1.qcow2" QEMU_OPTS="-net nic,id=eth1,model=e1000 -net socket,listen=localhost:8765" $MASTER_VM_EXEC &
+for i in $(seq 2 $NUM_MASTERS); do
+    NIX_DISK_IMAGE="./master_$i.qcow2" QEMU_OPTS="-net nic,id=eth1,model=e1000 -net socket,connect=localhost:8765" $MASTER_VM_EXEC &
+done
+
+for i in $(seq 1 $NUM_NODES); do
+    NIX_DISK_IMAGE="./node_$i.qcow2" QEMU_OPTS="-net nic,id=eth1,model=e1000 -net socket,connect=localhost:8765" $NODE_VM_EXEC &
+done
+
+wait

@@ -16,7 +16,7 @@
       });
     in
     {
-      nixosModules.formats = { config, ... }: {
+      nixosModules.formats = { config, lib, ... }: {
         nixpkgs.hostPlatform = "x86_64-linux";
         imports = [
           nixos-generators.nixosModules.all-formats
@@ -27,6 +27,17 @@
         };
       };
 
+      nixosConfigurations.master = nixpkgs.lib.nixosSystem {
+        modules = [ 
+          hosts/master.nix  
+          self.nixosModules.formats 
+          { 
+            # Pin nixpkgs to the flake input, so that the packages installed
+            # come from the flake inputs.nixpkgs.url.
+            nix.registry.nixpkgs.flake = nixpkgs; 
+          }
+        ];
+      };
       nixosConfigurations.node = nixpkgs.lib.nixosSystem {
         modules = [ 
           hosts/node.nix  

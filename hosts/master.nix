@@ -11,12 +11,12 @@ in
     extraGroups  = [ "wheel" ];
   };
 
-  networking.hostName = "node";
+  networking.hostName = "master";
   networking.extraHosts = "${kubeMasterIP} ${kubeMasterHostname}";
   networking.firewall.enable = false;
   networking.interfaces.eth1 = {
     ipv4.addresses = [{
-      address = "10.1.1.3";
+      address = "10.1.1.2";
       prefixLength = 24;
     }];
   };
@@ -27,16 +27,15 @@ in
     kubernetes
   ];
 
-  services.kubernetes = let 
-    api = "https://${kubeMasterHostname}:${toString kubeMasterAPIServerPort}"; 
-  in {
-    roles = ["node"];
+  services.kubernetes = {
+    roles = ["master" "node"];
     masterAddress = kubeMasterHostname;
+    apiserverAddress = "https://${kubeMasterHostname}:${toString kubeMasterAPIServerPort}";
     easyCerts = true;
-
-    # point kubelet and other services to kube-apiserver
-    kubelet.kubeconfig.server = api;
-    apiserverAddress = api;
+    apiserver = {
+      securePort = kubeMasterAPIServerPort;
+      advertiseAddress = kubeMasterIP;
+    };
 
     # use coredns
     addons.dns.enable = true;
