@@ -28,7 +28,7 @@
   };
   networking.interfaces.eth1 = {
     ipv4.addresses = [{
-      address = "10.1.1.1";
+      address = "192.168.1.1";
       prefixLength = 24;
     }];
   };
@@ -41,7 +41,7 @@
       domain = "local";
       expand-hosts = true;
       dhcp-range = [
-        "10.1.1.2,10.1.1.254"
+        "192.168.1.2,192.168.1.254"
       ];
       server = [
         "1.1.1.1"
