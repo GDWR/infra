@@ -1,9 +1,4 @@
 { config, lib, pkgs, ... }:
-let
-  kubeMasterIP = "10.1.1.2";
-  kubeMasterHostname = "api.kube";
-  kubeMasterAPIServerPort = 6443;
-in
 {
   users.users.gdwr = {
     isNormalUser  = true;
@@ -12,38 +7,16 @@ in
   };
 
   networking.hostName = "node";
-  networking.extraHosts = "${kubeMasterIP} ${kubeMasterHostname}";
   networking.firewall.enable = false;
-  networking.interfaces.eth1 = {
-    ipv4.addresses = [{
-      address = "10.1.1.3";
-      prefixLength = 24;
-    }];
-  };
+  
+  networking.dhcpcd.persistent = true;
+  networking.dhcpcd.allowInterfaces = ["eth1"];
+  networking.dhcpcd.extraConfig = ''
+    noarp
+    noipv6
 
-  environment.systemPackages = with pkgs; [
-    kompose
-    kubectl
-    kubernetes
-  ];
-
-  services.kubernetes = let 
-    api = "https://${kubeMasterHostname}:${toString kubeMasterAPIServerPort}"; 
-  in {
-    roles = ["node"];
-    masterAddress = kubeMasterHostname;
-    easyCerts = true;
-
-    # point kubelet and other services to kube-apiserver
-    kubelet.kubeconfig.server = api;
-    apiserverAddress = api;
-
-    # use coredns
-    addons.dns.enable = true;
-
-    # needed if you use swap
-    kubelet.extraOpts = "--fail-swap-on=false";
-  };
-
-  system.stateVersion = "24.11";
+    interface eth1
+    static routers=10.1.1.1
+    static domain_name_servers=10.1.1.1 1.1.1.1 8.8.8.8 8.8.4.4
+  '';
 }

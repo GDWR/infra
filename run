@@ -14,6 +14,10 @@ function usage() {
   exit 1;
 }
 
+function random_mac() {
+    hexdump -n 6 -ve '1/1 "%.2x "' /dev/random | awk -v a="2,6,a,e" -v r="$RANDOM" 'BEGIN{srand(r);}NR==1{split(a,b,",");r=int(rand()*4+1);printf "%s%s:%s:%s:%s:%s:%s\n",substr($1,0,1),b[r],$2,$3,$4,$5,$6}'
+}
+
 function ensure_number() {
     if ! [[ $1 =~ ^[1-9][0-9]*$ ]]; then
         echo $2 1>&2;
@@ -45,18 +49,18 @@ if [ $CLEAN_DISKS = true ]; then
     rm -f *.qcow2
 fi
 
+ROUTER_VM_EXEC=$(nix build .#nixosConfigurations.router.config.formats.vm --print-out-paths --no-link)/run-router-vm
 MASTER_VM_EXEC=$(nix build .#nixosConfigurations.master.config.formats.vm --print-out-paths --no-link)/run-master-vm
 NODE_VM_EXEC=$(nix build .#nixosConfigurations.node.config.formats.vm --print-out-paths --no-link)/run-node-vm
 
+NIX_DISK_IMAGE="./router.qcow2" QEMU_OPTS="-net nic,macaddr=$(random_mac) -net socket,mcast=230.0.0.1:1234" $ROUTER_VM_EXEC &
 
-# One master has to listen for the qemu socket network, the rest will also connect.
-NIX_DISK_IMAGE="./master_1.qcow2" QEMU_OPTS="-net nic,id=eth1,model=e1000 -net socket,listen=localhost:8765" $MASTER_VM_EXEC &
-for i in $(seq 2 $NUM_MASTERS); do
-    NIX_DISK_IMAGE="./master_$i.qcow2" QEMU_OPTS="-net nic,id=eth1,model=e1000 -net socket,connect=localhost:8765" $MASTER_VM_EXEC &
+for i in $(seq 1 $NUM_MASTERS); do
+    NIX_DISK_IMAGE="./master_$i.qcow2" QEMU_OPTS="-net nic,macaddr=$(random_mac) -net socket,mcast=230.0.0.1:1234" $MASTER_VM_EXEC &
 done
 
 for i in $(seq 1 $NUM_NODES); do
-    NIX_DISK_IMAGE="./node_$i.qcow2" QEMU_OPTS="-net nic,id=eth1,model=e1000 -net socket,connect=localhost:8765" $NODE_VM_EXEC &
+    NIX_DISK_IMAGE="./node_$i.qcow2" QEMU_OPTS="-net nic,macaddr=$(random_mac) -net socket,mcast=230.0.0.1:1234" $NODE_VM_EXEC &
 done
 
 wait

@@ -14,6 +14,21 @@
         inherit system;
         pkgs = nixpkgs.legacyPackages.${system};
       });
+
+      createSystem = hostCfg:
+        nixpkgs.lib.nixosSystem {
+          modules = [ 
+            hostCfg
+            self.nixosModules.formats 
+            { 
+              # Pin nixpkgs to the flake input, so that the packages installed
+              # come from the flake inputs.nixpkgs.url.
+              nix.registry.nixpkgs.flake = nixpkgs; 
+              nix.settings.experimental-features = "nix-command flakes";
+              system.stateVersion = "24.11";
+            }
+          ];
+        };
     in
     {
       nixosModules.formats = { config, lib, ... }: {
@@ -27,27 +42,10 @@
         };
       };
 
-      nixosConfigurations.master = nixpkgs.lib.nixosSystem {
-        modules = [ 
-          hosts/master.nix  
-          self.nixosModules.formats 
-          { 
-            # Pin nixpkgs to the flake input, so that the packages installed
-            # come from the flake inputs.nixpkgs.url.
-            nix.registry.nixpkgs.flake = nixpkgs; 
-          }
-        ];
-      };
-      nixosConfigurations.node = nixpkgs.lib.nixosSystem {
-        modules = [ 
-          hosts/node.nix  
-          self.nixosModules.formats 
-          { 
-            # Pin nixpkgs to the flake input, so that the packages installed
-            # come from the flake inputs.nixpkgs.url.
-            nix.registry.nixpkgs.flake = nixpkgs; 
-          }
-        ];
+      nixosConfigurations = {
+        router = createSystem hosts/router.nix;
+        master = createSystem hosts/master.nix;
+        node = createSystem hosts/node.nix;
       };
 
       devShells = forAll ({ system, pkgs }: {
