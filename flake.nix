@@ -7,7 +7,7 @@
     };
   };
 
-  outputs = { nixpkgs, nixos-generators, ... }:
+  outputs = { self, nixpkgs, nixos-generators, ... }:
     let
       allTargets = [ "x86_64-linux" "aarch64-linux" ];
       forAll = f: nixpkgs.lib.genAttrs allTargets (system: f {
@@ -16,18 +16,28 @@
       });
     in
     {
-      packages = forAll ({ system, pkgs }: {
-        node = nixos-generators.nixosGenerate {
-          inherit system;
-          modules = [
-            {
-              nix.registry.nixpkgs.flake = nixpkgs;
-              virtualisation.diskSize = 20 * 1024;
-            }
-          ];
-          format = "raw";
+      nixosModules.formats = { config, ... }: {
+        nixpkgs.hostPlatform = "x86_64-linux";
+        imports = [
+          nixos-generators.nixosModules.all-formats
+        ];
+
+        formatConfigs.vm = { config, ... }: {
+          virtualisation.diskSize = 20 * 1024;
         };
-      });
+      };
+
+      nixosConfigurations.node = nixpkgs.lib.nixosSystem {
+        modules = [ 
+          hosts/node.nix  
+          self.nixosModules.formats 
+          { 
+            # Pin nixpkgs to the flake input, so that the packages installed
+            # come from the flake inputs.nixpkgs.url.
+            nix.registry.nixpkgs.flake = nixpkgs; 
+          }
+        ];
+      };
 
       devShells = forAll ({ system, pkgs }: {
         default = pkgs.mkShell {
