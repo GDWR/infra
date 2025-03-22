@@ -38,6 +38,8 @@
     alwaysKeepRunning = true;
     settings = {
       interface = "eth1";
+      domain = "local";
+      expand-hosts = true;
       dhcp-range = [
         "10.1.1.2,10.1.1.254"
       ];
