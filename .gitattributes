@@ -1,1 +1,1 @@
-secrets/** filter=git-crypt diff=git-crypt
+secrets/bootstrap/** filter=git-crypt diff=git-crypt
