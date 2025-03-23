@@ -51,7 +51,10 @@
       devShells = forAll ({ system, pkgs }: {
         default = pkgs.mkShell {
           inherit system;
-          packages = [ pkgs.nixos-generators ];
+          packages = [ 
+            pkgs.git-crypt
+            pkgs.nixos-generators 
+          ];
         };
       });
     };
