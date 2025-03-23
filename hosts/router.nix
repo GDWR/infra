@@ -36,10 +36,21 @@
   services.openssh = {
     enable = true;
     hostKeys = [{
-      path = "${../secrets/router-id_ed25519}";
+      path = "/etc/ssh/router-id_ed25519";
       type = "ed25519";
     }];
   };
+  system.activationScripts.hostkeyInit = {
+    text = ''
+      echo [hostkeyInit] gathering hostkey
+      cp ${../secrets/bootstrap/router-id_ed25519} /etc/ssh/router-id_ed25519
+      echo [hostkeyInit] settings permissions
+      chown 400 /etc/ssh/router-id_ed25519
+      echo [hostkeyInit] done
+    '';
+    deps = ["etc"];
+  };
+
 
   services.dnsmasq = {
     enable = true;

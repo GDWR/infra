@@ -1,5 +1,22 @@
 { config, lib, pkgs, ... }:
 {
+  age.secrets.apitoken = {
+    file = ../secrets/apitoken.age;
+    owner = "cfssl";
+  };
+  systemd.services."cfssl-autoinit" = {
+    before = [ "cfssl.target" ];
+    wantedBy = [ "multi-user.target" ];
+    script = ''
+      ${pkgs.coreutils}/bin/mkdir -p ${config.services.cfssl.dataDir}
+      ${pkgs.coreutils}/bin/ln -s ${config.age.secrets.apitoken.path} ${config.services.cfssl.dataDir}/apitoken.secret
+    '';
+    serviceConfig = {
+      RestartSec = "10s";
+      Restart = "on-failure";
+    };
+  };
+
   users.users.gdwr = {
     isNormalUser  = true;
     password = "gdwr";
@@ -15,10 +32,21 @@
   services.openssh = {
     enable = true;
     hostKeys = [{
-      path = "${../secrets/master-id_ed25519}";
+      path = "/etc/ssh/master-id_ed25519";
       type = "ed25519";
     }];
   };
+  system.activationScripts.hostkeyInit = {
+    text = ''
+      echo [hostkeyInit] gathering hostkey
+      cp ${../secrets/bootstrap/master-id_ed25519} /etc/ssh/master-id_ed25519
+      echo [hostkeyInit] settings permissions
+      chown 400 /etc/ssh/master-id_ed25519
+      echo [hostkeyInit] done
+    '';
+    deps = ["etc"];
+  };
+
   environment.systemPackages = with pkgs; [
     kompose
     kubectl

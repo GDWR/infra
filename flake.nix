@@ -1,13 +1,17 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    agenix = {
+      url = "github:gdwr/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixos-generators = {
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, nixos-generators, ... }:
+  outputs = { self, nixpkgs, agenix, nixos-generators, ... }:
     let
       allTargets = [ "x86_64-linux" "aarch64-linux" ];
       forAll = f: nixpkgs.lib.genAttrs allTargets (system: f {
@@ -19,6 +23,7 @@
         nixpkgs.lib.nixosSystem {
           modules = [ 
             hostCfg
+            agenix.nixosModules.default
             self.nixosModules.formats 
             { 
               # Pin nixpkgs to the flake input, so that the packages installed
@@ -53,6 +58,7 @@
           inherit system;
           packages = [ 
             pkgs.git-crypt
+            agenix.packages.${system}.default
             nixos-generators.packages.${system}.default
           ];
         };
