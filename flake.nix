@@ -53,7 +53,7 @@
           inherit system;
           packages = [ 
             pkgs.git-crypt
-            pkgs.nixos-generators 
+            nixos-generators.packages.${system}.default
           ];
         };
       });
