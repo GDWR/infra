@@ -33,6 +33,14 @@
     }];
   };
 
+  services.openssh = {
+    enable = true;
+    hostKeys = [{
+      path = "${../secrets/router-id_ed25519}";
+      type = "ed25519";
+    }];
+  };
+
   services.dnsmasq = {
     enable = true;
     alwaysKeepRunning = true;

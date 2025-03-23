@@ -12,7 +12,13 @@
   networking.dhcpcd.persistent = true;
   networking.dhcpcd.allowInterfaces = ["eth1"];
 
-
+  services.openssh = {
+    enable = true;
+    hostKeys = [{
+      path = "${../secrets/node-id_ed25519}";
+      type = "ed25519";
+    }];
+  };
   environment.systemPackages = with pkgs; [
     kompose
     kubectl
